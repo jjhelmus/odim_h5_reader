@@ -110,18 +110,42 @@ def read_odim_h5(filename):
     # this is the elevation or azimuth angle that is fixed for each sweep.
     # In this case the elevation angle.
     fixed_angle = filemetadata('fixed_angle')
-    fixed_angle['data'] = np.array(
-        [hfile[d]['where'].attrs['elangle'] for d in datasets],
-        dtype='float32')
+    sweep_el = [hfile[d]['where'].attrs['elangle'] for d in datasets]
+    fixed_angle['data'] = np.array(sweep_el, dtype='float32')
+
+    # elevation
+    # elevation for each ray in the volume. Since these are PPI scans
+    # the elevation angle for each sweep is repeated the number of rays
+    # contained in that sweep.
+    elevation = filemetadata('elevation')
+    elevation['data'] = np.repeat(sweep_el, rays_per_sweep)
+
+    # range
+    # range contains the distances in meters to the center of each range
+    # bin.  The 'meters_to_center_of_first_gate' and 'meters_between_gates'
+    # attribute should also be set accordingly.  If the gate spacing is not
+    # constant, remove the 'meters_beween_gates' key and change
+    # 'spacing_is_constant' to 'false'.
+    _range = filemetadata('range')
+
+    # here we assume that the gate layout in the first sweep is
+    # the same as all the sweep.  A check should be added to verify this
+    # assumption.  The Radar object cannot work with radar data where the
+    # gate spacing is not constant for all radials.  Data of this type
+    # should raise an exception.
+    first_gate = hfile['dataset1']['where'].attrs['rstart'] * 1000.
+    gate_spacing = hfile['dataset1']['where'].attrs['rscale']
+    nbins = hfile['dataset1']['where'].attrs['nbins']
+    _range['data'] = (np.arange(nbins, dtype='float32') * gate_spacing +
+                      first_gate)
+    _range['meters_to_center_of_first_gate'] = first_gate
+    _range['meters_between_gates'] = gate_spacing
 
     # XXX fake data, replace
     time = filemetadata('time')
     time['data'] = np.array([0])
-    _range = filemetadata('range')
-    _range['data'] = np.array([0])
     fields = {}
     azimuth = filemetadata('azimuth')
-    elevation = filemetadata('elevation')
     instrument_parameters = None
 
     return Radar(
@@ -147,12 +171,6 @@ def read_odim_h5(filename):
     time_end = date2num(mdvfile.times['time_end'], units)
     time['data'] = np.linspace(time_start, time_end, naz * nele)
 
-    # range
-    _range = filemetadata('range')
-    _range['data'] = np.array(mdvfile.range_km * 1000.0, dtype='float32')
-    _range['meters_to_center_of_first_gate'] = _range['data'][0]
-    _range['meters_between_gates'] = (_range['data'][1] - _range['data'][0])
-
     # fields
     fields = {}
     for mdv_field in set(mdvfile.fields):
@@ -175,15 +193,12 @@ def read_odim_h5(filename):
 
     # azimuth, elevation
     azimuth = filemetadata('azimuth')
-    elevation = filemetadata('elevation')
 
     if scan_type == 'ppi':
         azimuth['data'] = np.tile(mdvfile.az_deg, nele)
-        elevation['data'] = np.array(mdvfile.el_deg).repeat(naz)
 
     elif scan_type == 'rhi':
         azimuth['data'] = np.array(mdvfile.az_deg).repeat(nele)
-        elevation['data'] = np.tile(mdvfile.el_deg, naz)
 
     # instrument parameters
     # we will set 4 parameters in the instrument_parameters dict

@@ -39,5 +39,17 @@ def test_read_pvol():
     assert_allclose(radar.fixed_angle['data'],
                        [0.0, 1.1, 23.5, 28.2, 33.7, 40.0])
 
+    # elevation, check each sweep
+    assert np.allclose(radar.elevation['data'][:361], 0.0)
+    assert np.allclose(radar.elevation['data'][361:722], 1.1)
+    assert np.allclose(radar.elevation['data'][722:1083], 23.5)
+    assert np.allclose(radar.elevation['data'][1083:1444], 28.2)
+    assert np.allclose(radar.elevation['data'][1444:1805], 33.7)
+    assert np.allclose(radar.elevation['data'][1805:], 40.0)
+
+    # range
+    assert_allclose(radar.range['data'], np.arange(800) * 250)
+
     # additional radar attributes
     assert radar.nsweeps == 6
+    assert radar.ngates == 800
