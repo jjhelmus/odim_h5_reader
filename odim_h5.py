@@ -33,6 +33,27 @@ def read_odim_h5(filename):
     # user to adjust the default values using the Py-ART config file.
     filemetadata = FileMetadata('odim_h5')
 
+    # open the
+    hfile = h5py.File(filename, 'r')
+
+    # The general procedure for each parameter is to create a dictionary
+    # with default values from the filemetadata object. Then updating any
+    # keys with data from the file, as well as recording the actual parameter
+    # data in the 'data' key.
+
+    # latitude, longitude and altitude
+    # latitude and longitude are measured in degrees (north and east).
+    # altitude in meters above mean sea level
+    latitude = filemetadata('latitude')
+    longitude = filemetadata('longitude')
+    altitude = filemetadata('altitude')
+
+    h_where = hfile['where'].attrs
+    latitude['data'] = np.array([h_where['lat']], dtype='float64')
+    longitude['data'] = np.array([h_where['lon']], dtype='float64')
+    altitude['data'] = np.array([h_where['height']], dtype='float64')
+
+
     # XXX fake data, replace
     time = filemetadata('time')
     time['data'] = np.array([0])
@@ -41,9 +62,6 @@ def read_odim_h5(filename):
     fields = {}
     metadata = filemetadata('metadata')
     scan_type = 'ppi'
-    latitude = filemetadata('latitude')
-    longitude = filemetadata('longitude')
-    altitude = filemetadata('altitude')
     sweep_number = filemetadata('sweep_number')
     sweep_number['data'] = np.array([0])
     sweep_mode = filemetadata('sweep_mode')
@@ -111,19 +129,6 @@ def read_odim_h5(filename):
     metadata = filemetadata('metadata')
     for meta_key, mdv_key in MDV_METADATA_MAP.iteritems():
         metadata[meta_key] = mdvfile.master_header[mdv_key]
-
-    # latitude
-    latitude = filemetadata('latitude')
-    latitude['data'] = np.array([mdvfile.radar_info['latitude_deg']],
-                                dtype='float64')
-    # longitude
-    longitude = filemetadata('longitude')
-    longitude['data'] = np.array([mdvfile.radar_info['longitude_deg']],
-                                 dtype='float64')
-    # altitude
-    altitude = filemetadata('altitude')
-    altitude['data'] = np.array([mdvfile.radar_info['altitude_km'] * 1000.0],
-                                dtype='float64')
 
     # sweep_number, sweep_mode, fixed_angle, sweep_start_ray_index,
     # sweep_end_ray_index
