@@ -4,7 +4,7 @@ Routines for reading ODIM_H5 files
 
 import numpy as np
 import h5py
-
+import datetime
 
 from pyart.config import FileMetadata, get_fillvalue
 from pyart.io.radar import Radar
@@ -159,9 +159,25 @@ def read_odim_h5(filename):
         start += rays_in_sweep
     azimuth['data'] = az_data
 
-    # XXX fake data, replace
+    # time
+    # time at which each ray was collected.  Need to define
+    # starting time and the units of the data in the 'unit' dictionary
+    # element.
+    # Since startazT and stopazT do not appear to be present in all files
+    # and the startepochs and endepochs attributes appear the same for
+    # each sweep, just interpolate between these values.
+    # XXX This is does not seem correct.
+    # Assuming these are UTC times
     time = filemetadata('time')
-    time['data'] = np.array([0]*total_rays)
+
+    start_epoch = hfile['dataset1']['how'].attrs['startepochs']
+    end_epoch = hfile['dataset1']['how'].attrs['stopepochs']
+    start_time = datetime.datetime.utcfromtimestamp(start_epoch)
+    delta_sec = end_epoch - start_epoch
+    time['units'] = make_time_unit_str(start_time)
+    time['data'] = np.linspace(0, delta_sec, total_rays).astype('float32')
+
+    # XXX fake data, replace
     fields = {}
     instrument_parameters = None
 
@@ -172,15 +188,6 @@ def read_odim_h5(filename):
         sweep_end_ray_index,
         azimuth, elevation,
         instrument_parameters=instrument_parameters)
-
-
-    # time
-    time = filemetadata('time')
-    units = make_time_unit_str(mdvfile.times['time_begin'])
-    time['units'] = units
-    time_start = date2num(mdvfile.times['time_begin'], units)
-    time_end = date2num(mdvfile.times['time_end'], units)
-    time['data'] = np.linspace(time_start, time_end, naz * nele)
 
     # fields
     fields = {}
@@ -232,5 +239,3 @@ def read_odim_h5(filename):
     instrument_parameters = {'prt_mode': prt_mode, 'prt': prt,
                              'unambiguous_range': unambiguous_range,
                              'nyquist_velocity': nyquist_velocity}
-
-

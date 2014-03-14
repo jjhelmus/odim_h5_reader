@@ -37,7 +37,7 @@ def test_read_pvol():
 
     # fixed_angle
     assert_allclose(radar.fixed_angle['data'],
-                       [0.0, 1.1, 23.5, 28.2, 33.7, 40.0])
+                    [0.0, 1.1, 23.5, 28.2, 33.7, 40.0])
 
     # elevation, check each sweep
     assert np.allclose(radar.elevation['data'][:361], 0.0)
@@ -57,6 +57,11 @@ def test_read_pvol():
     assert round(radar.azimuth['data'][1083 + 10], 2) == 10.03
     assert round(radar.azimuth['data'][1444 + 10], 2) == 10.04
     assert round(radar.azimuth['data'][1805 + 10], 2) == 10.02
+
+    # time
+    assert radar.time['units'] == 'seconds since 2012-02-26T10:27:51Z'
+    assert radar.time['data'][0] == 0
+    assert radar.time['data'][-1] == 236
 
     # additional radar attributes
     assert radar.nsweeps == 6
