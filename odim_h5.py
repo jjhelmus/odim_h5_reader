@@ -141,11 +141,28 @@ def read_odim_h5(filename):
     _range['meters_to_center_of_first_gate'] = first_gate
     _range['meters_between_gates'] = gate_spacing
 
+    # azimuth
+    # azimuth angle for all rays collected in the volume
+    azimuth = filemetadata('azimuth')
+    total_rays = np.sum(rays_per_sweep)
+    az_data = np.ones((total_rays, ), dtype='float32')
+
+    # loop over the sweeps, store the starting azimuth angles.
+    # an average of the startazA and stopazA would probably be a better
+    # estimate, but the discontinuity between 0 and 360 would need to be
+    # addressed.
+    start = 0
+    for dset, rays_in_sweep in zip(datasets, rays_per_sweep):
+
+        sweep_az = hfile[dset]['how'].attrs['startazA']
+        az_data[start:start + rays_in_sweep] = sweep_az
+        start += rays_in_sweep
+    azimuth['data'] = az_data
+
     # XXX fake data, replace
     time = filemetadata('time')
-    time['data'] = np.array([0])
+    time['data'] = np.array([0]*total_rays)
     fields = {}
-    azimuth = filemetadata('azimuth')
     instrument_parameters = None
 
     return Radar(
@@ -156,12 +173,6 @@ def read_odim_h5(filename):
         azimuth, elevation,
         instrument_parameters=instrument_parameters)
 
-
-    mdvfile = MdvFile(filename)
-
-    # value attributes
-    naz = len(mdvfile.az_deg)
-    nele = len(mdvfile.el_deg)
 
     # time
     time = filemetadata('time')
@@ -190,15 +201,6 @@ def read_odim_h5(filename):
         field_dic['data'] = data
         field_dic['_FillValue'] = get_fillvalue()
         fields[field_name] = field_dic
-
-    # azimuth, elevation
-    azimuth = filemetadata('azimuth')
-
-    if scan_type == 'ppi':
-        azimuth['data'] = np.tile(mdvfile.az_deg, nele)
-
-    elif scan_type == 'rhi':
-        azimuth['data'] = np.array(mdvfile.az_deg).repeat(nele)
 
     # instrument parameters
     # we will set 4 parameters in the instrument_parameters dict

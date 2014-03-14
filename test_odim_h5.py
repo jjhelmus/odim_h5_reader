@@ -50,6 +50,15 @@ def test_read_pvol():
     # range
     assert_allclose(radar.range['data'], np.arange(800) * 250)
 
+    # azimuth
+    assert round(radar.azimuth['data'][10], 2) == 10.04
+    assert round(radar.azimuth['data'][361 + 10], 2) == 10.03
+    assert round(radar.azimuth['data'][722 + 10], 2) == 10.01
+    assert round(radar.azimuth['data'][1083 + 10], 2) == 10.03
+    assert round(radar.azimuth['data'][1444 + 10], 2) == 10.04
+    assert round(radar.azimuth['data'][1805 + 10], 2) == 10.02
+
     # additional radar attributes
     assert radar.nsweeps == 6
     assert radar.ngates == 800
+    assert radar.nrays == 2166
