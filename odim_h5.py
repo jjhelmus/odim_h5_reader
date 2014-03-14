@@ -33,8 +33,11 @@ def read_odim_h5(filename):
     # user to adjust the default values using the Py-ART config file.
     filemetadata = FileMetadata('odim_h5')
 
-    # open the
+    # open the file, determine some key parameters
     hfile = h5py.File(filename, 'r')
+
+    datasets = [k for k in hfile if k.startswith('dataset')]
+    datasets.sort()
 
     # The general procedure for each parameter is to create a dictionary
     # with default values from the filemetadata object. Then updating any
@@ -73,6 +76,18 @@ def read_odim_h5(filename):
     metadata['source'] = hfile['what'].attrs['source']
     metadata['original_container'] = 'odim_h5'
 
+    # sweep_start_ray_index, sweep_end_ray_index
+    # These two dictionaries contain the indices of the first and last ray
+    # in each sweep (0-based indexing).
+    sweep_start_ray_index = filemetadata('sweep_start_ray_index')
+    sweep_end_ray_index = filemetadata('sweep_end_ray_index')
+
+    rays_per_sweep = [hfile[d]['where'].attrs['nrays'] for d in datasets]
+    ssri = np.cumsum(np.append([0], rays_per_sweep[:-1])).astype('int32')
+    seri = np.cumsum(rays_per_sweep).astype('int32') - 1
+    sweep_start_ray_index['data'] = ssri
+    sweep_end_ray_index['data'] = seri
+
     # XXX fake data, replace
     time = filemetadata('time')
     time['data'] = np.array([0])
@@ -84,8 +99,6 @@ def read_odim_h5(filename):
     sweep_number['data'] = np.array([0])
     sweep_mode = filemetadata('sweep_mode')
     fixed_angle = filemetadata('fixed_angle')
-    sweep_start_ray_index = filemetadata('sweep_start_ray_index')
-    sweep_end_ray_index = filemetadata('sweep_end_ray_index')
     azimuth = filemetadata('azimuth')
     elevation = filemetadata('elevation')
     instrument_parameters = None
@@ -148,8 +161,6 @@ def read_odim_h5(filename):
     sweep_number = filemetadata('sweep_number')
     sweep_mode = filemetadata('sweep_mode')
     fixed_angle = filemetadata('fixed_angle')
-    sweep_start_ray_index = filemetadata('sweep_start_ray_index')
-    sweep_end_ray_index = filemetadata('sweep_end_ray_index')
     len_time = len(time['data'])
 
     if mdvfile.scan_type == 'ppi':
