@@ -12,3 +12,8 @@ def test_read_pvol():
     assert round(radar.latitude['data'], 2) == 58.11
     assert round(radar.longitude['data'], 2) == 15.94
     assert round(radar.altitude['data'], 2) == 222.0
+
+    assert radar.metadata['source'] == (
+        'WMO:02570,PLC:Norrk\xc3\xb6ping,RAD:SE53,NOD:senkp')
+    assert radar.metadata['original_container'] == 'odim_h5'
+

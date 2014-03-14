@@ -53,6 +53,25 @@ def read_odim_h5(filename):
     longitude['data'] = np.array([h_where['lon']], dtype='float64')
     altitude['data'] = np.array([h_where['height']], dtype='float64')
 
+    # metadata
+    # this dictionary is used to store any metadata not recorded
+    # elsewhere, typically this is quite sparse.
+    # The default keys and values are as follow:
+    # 'Conventions': 'CF/Radial instrument_parameters',
+    # 'comment': '',
+    # 'history': '',
+    # 'institution': '',
+    # 'instrument_name': '',
+    # 'references': '',
+    # 'source': '',
+    # 'title': '',
+    # 'version': '1.3'}
+    # See section 4.1 of the CF/Radial format for a description of these
+    # attributes.  The 'what/source attribute can probably be used to
+    # fill in a number of these.
+    metadata = filemetadata('metadata')
+    metadata['source'] = hfile['what'].attrs['source']
+    metadata['original_container'] = 'odim_h5'
 
     # XXX fake data, replace
     time = filemetadata('time')
@@ -60,7 +79,6 @@ def read_odim_h5(filename):
     _range = filemetadata('range')
     _range['data'] = np.array([0])
     fields = {}
-    metadata = filemetadata('metadata')
     scan_type = 'ppi'
     sweep_number = filemetadata('sweep_number')
     sweep_number['data'] = np.array([0])
@@ -124,11 +142,6 @@ def read_odim_h5(filename):
         field_dic['data'] = data
         field_dic['_FillValue'] = get_fillvalue()
         fields[field_name] = field_dic
-
-    # metadata
-    metadata = filemetadata('metadata')
-    for meta_key, mdv_key in MDV_METADATA_MAP.iteritems():
-        metadata[meta_key] = mdvfile.master_header[mdv_key]
 
     # sweep_number, sweep_mode, fixed_angle, sweep_start_ray_index,
     # sweep_end_ray_index
