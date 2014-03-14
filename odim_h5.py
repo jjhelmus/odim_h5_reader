@@ -38,6 +38,7 @@ def read_odim_h5(filename):
 
     datasets = [k for k in hfile if k.startswith('dataset')]
     datasets.sort()
+    nsweeps = len(datasets)
 
     # The general procedure for each parameter is to create a dictionary
     # with default values from the filemetadata object. Then updating any
@@ -88,6 +89,12 @@ def read_odim_h5(filename):
     sweep_start_ray_index['data'] = ssri
     sweep_end_ray_index['data'] = seri
 
+    # sweep_number
+    # sweep number in the volume, 0-based
+    sweep_number = filemetadata('sweep_number')
+    sweep_number['data'] = np.arange(nsweeps, dtype='int32')
+
+
     # XXX fake data, replace
     time = filemetadata('time')
     time['data'] = np.array([0])
@@ -95,8 +102,6 @@ def read_odim_h5(filename):
     _range['data'] = np.array([0])
     fields = {}
     scan_type = 'ppi'
-    sweep_number = filemetadata('sweep_number')
-    sweep_number['data'] = np.array([0])
     sweep_mode = filemetadata('sweep_mode')
     fixed_angle = filemetadata('fixed_angle')
     azimuth = filemetadata('azimuth')
@@ -158,30 +163,19 @@ def read_odim_h5(filename):
 
     # sweep_number, sweep_mode, fixed_angle, sweep_start_ray_index,
     # sweep_end_ray_index
-    sweep_number = filemetadata('sweep_number')
     sweep_mode = filemetadata('sweep_mode')
     fixed_angle = filemetadata('fixed_angle')
     len_time = len(time['data'])
 
     if mdvfile.scan_type == 'ppi':
         nsweeps = nele
-        sweep_number['data'] = np.arange(nsweeps, dtype='int32')
         sweep_mode['data'] = np.array(nsweeps * ['azimuth_surveillance'])
         fixed_angle['data'] = np.array(mdvfile.el_deg, dtype='float32')
-        sweep_start_ray_index['data'] = np.arange(0, len_time, naz,
-                                                  dtype='int32')
-        sweep_end_ray_index['data'] = np.arange(naz-1, len_time, naz,
-                                                dtype='int32')
 
     elif mdvfile.scan_type == 'rhi':
         nsweeps = naz
-        sweep_number['data'] = np.arange(nsweeps, dtype='int32')
         sweep_mode['data'] = np.array(nsweeps * ['rhi'])
         fixed_angle['data'] = np.array(mdvfile.az_deg, dtype='float32')
-        sweep_start_ray_index['data'] = np.arange(0, len_time, nele,
-                                                  dtype='int32')
-        sweep_end_ray_index['data'] = np.arange(nele - 1, len_time, nele,
-                                                dtype='int32')
 
     # azimuth, elevation
     azimuth = filemetadata('azimuth')

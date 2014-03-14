@@ -28,3 +28,10 @@ def test_read_pvol():
                        np.arange(6) * 361)
     assert_array_equal(radar.sweep_end_ray_index['data'],
                        np.arange(6) * 361 + 360)
+
+    # sweep_number
+    assert_array_equal(radar.sweep_number['data'], np.arange(6))
+
+
+    # additional radar attributes
+    assert radar.nsweeps == 6
