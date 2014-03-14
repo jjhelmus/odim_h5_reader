@@ -94,6 +94,25 @@ def read_odim_h5(filename):
     sweep_number = filemetadata('sweep_number')
     sweep_number['data'] = np.arange(nsweeps, dtype='int32')
 
+    # sweep_mode
+    # The scan type for each sweep, common options are:
+    # 'rhi','azimuth_surveillance', 'vertical_pointing'
+    # Are all ODIM_H5 files PPI volumes?  How do you check for this
+    sweep_mode = filemetadata('sweep_mode')
+    sweep_mode['data'] = np.array(nsweeps * ['azimuth_surveillance'])
+
+    # scan_type
+    # 'ppi', 'rhi', or 'vpt'.
+    # Assuming all ODIM_H5 files are ppi scans
+    scan_type = 'ppi'
+
+    # fixed_angle
+    # this is the elevation or azimuth angle that is fixed for each sweep.
+    # In this case the elevation angle.
+    fixed_angle = filemetadata('fixed_angle')
+    fixed_angle['data'] = np.array(
+        [hfile[d]['where'].attrs['elangle'] for d in datasets],
+        dtype='float32')
 
     # XXX fake data, replace
     time = filemetadata('time')
@@ -101,9 +120,6 @@ def read_odim_h5(filename):
     _range = filemetadata('range')
     _range['data'] = np.array([0])
     fields = {}
-    scan_type = 'ppi'
-    sweep_mode = filemetadata('sweep_mode')
-    fixed_angle = filemetadata('fixed_angle')
     azimuth = filemetadata('azimuth')
     elevation = filemetadata('elevation')
     instrument_parameters = None
@@ -122,10 +138,6 @@ def read_odim_h5(filename):
     # value attributes
     naz = len(mdvfile.az_deg)
     nele = len(mdvfile.el_deg)
-    scan_type = mdvfile.scan_type
-
-    if scan_type not in ['ppi', 'rhi']:
-        raise NotImplementedError('No support for scan_type %s.' % scan_type)
 
     # time
     time = filemetadata('time')
@@ -160,22 +172,6 @@ def read_odim_h5(filename):
         field_dic['data'] = data
         field_dic['_FillValue'] = get_fillvalue()
         fields[field_name] = field_dic
-
-    # sweep_number, sweep_mode, fixed_angle, sweep_start_ray_index,
-    # sweep_end_ray_index
-    sweep_mode = filemetadata('sweep_mode')
-    fixed_angle = filemetadata('fixed_angle')
-    len_time = len(time['data'])
-
-    if mdvfile.scan_type == 'ppi':
-        nsweeps = nele
-        sweep_mode['data'] = np.array(nsweeps * ['azimuth_surveillance'])
-        fixed_angle['data'] = np.array(mdvfile.el_deg, dtype='float32')
-
-    elif mdvfile.scan_type == 'rhi':
-        nsweeps = naz
-        sweep_mode['data'] = np.array(nsweeps * ['rhi'])
-        fixed_angle['data'] = np.array(mdvfile.az_deg, dtype='float32')
 
     # azimuth, elevation
     azimuth = filemetadata('azimuth')
