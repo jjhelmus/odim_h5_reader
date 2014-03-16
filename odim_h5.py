@@ -177,8 +177,42 @@ def read_odim_h5(filename):
     time['units'] = make_time_unit_str(start_time)
     time['data'] = np.linspace(0, delta_sec, total_rays).astype('float32')
 
-    # XXX fake data, replace
+    # fields
+    # the radar moments or fields are stored in as a dictionary of
+    # dictionaries.  The dictionary for each field, a 'field dictionary'
+    # should contain any necessary metadata.  The actual data is stored in
+    # the 'data' key as a 2D array of size (nrays, ngates) where nrays is the
+    # total number of rays in all sweeps of the volume, and ngate is the
+    # number of bins or gates in each radial.
     fields = {}
+    h_field_keys = [k for k in hfile['dataset1'].keys() if
+                    k.startswith('data')]
+    field_names = [hfile['dataset1'][d]['what'].attrs['quantity'] for d in
+                   h_field_keys]
+    # loop over the fields, create the field dictionaty
+    for field_name, h_field_key in zip(field_names, h_field_keys):
+        # XXX still need to set metadata, some default field metadata can
+        # likely be provided form the filemetadata object.
+        #field_dic = filemetadata(field_name)
+        field_dic = {}
+        dtype = hfile['dataset1'][h_field_key]['data'].dtype
+        field_dic['data'] = np.zeros((total_rays, nbins), dtype=dtype)
+        start = 0
+        # loop over the sweeps, copy data into correct location in data array
+        for dset, rays_in_sweep in zip(datasets, rays_per_sweep):
+            sweep_data = hfile[dset][h_field_key]['data'][:]
+            field_dic['data'][start:start + rays_in_sweep] = sweep_data[:]
+            start += rays_in_sweep
+        fields[field_name] = field_dic
+
+    # instrument_parameters
+    # this is also a dictionary of dictionaries which contains
+    # instrument parameter like wavelength, PRT rate, nyquist velocity, etc.
+    # A full list of possible parameters can be found in section 5.1 of
+    # the CF/Radial document.
+    # prt, prt_mode, unambiguous_range, and nyquist_velocity are the
+    # parameters which we try to set in Py-ART although a valid Radar object
+    # can be created with fewer or more parameters
     instrument_parameters = None
 
     return Radar(
@@ -188,54 +222,3 @@ def read_odim_h5(filename):
         sweep_end_ray_index,
         azimuth, elevation,
         instrument_parameters=instrument_parameters)
-
-    # fields
-    fields = {}
-    for mdv_field in set(mdvfile.fields):
-        field_name = filemetadata.get_field_name(mdv_field)
-        if field_name is None:
-            continue
-
-        # grab data from MDV object, mask and reshape
-        data = mdvfile.read_a_field(mdvfile.fields.index(mdv_field))
-        data[np.where(np.isnan(data))] = get_fillvalue()
-        data[np.where(data == 131072)] = get_fillvalue()
-        data = np.ma.masked_equal(data, get_fillvalue())
-        data.shape = (data.shape[0] * data.shape[1], data.shape[2])
-
-        # create and store the field dictionary
-        field_dic = filemetadata(field_name)
-        field_dic['data'] = data
-        field_dic['_FillValue'] = get_fillvalue()
-        fields[field_name] = field_dic
-
-    # instrument parameters
-    # we will set 4 parameters in the instrument_parameters dict
-    # prt, prt_mode, unambiguous_range, and nyquist_velocity
-
-    # TODO prt mode: Need to fix this.. assumes dual if two prts
-    if mdvfile.radar_info['prt2_s'] == 0.0:
-        prt_mode_str = 'fixed'
-    else:
-        prt_mode_str = 'dual'
-
-    prt_mode = filemetadata('prt_mode')
-    prt = filemetadata('prt')
-    unambiguous_range = filemetadata('unambiguous_range')
-    nyquist_velocity = filemetadata('nyquist_velocity')
-
-    prt_mode['data'] = np.array([prt_mode_str] * nsweeps)
-    prt['data'] = np.array([mdvfile.radar_info['prt_s']] * nele * naz,
-                           dtype='float32')
-
-    urange_m = mdvfile.radar_info['unambig_range_km'] * 1000.0
-    unambiguous_range['data'] = np.array([urange_m] * naz * nele,
-                                         dtype='float32')
-
-    uvel_mps = mdvfile.radar_info['unambig_vel_mps']
-    nyquist_velocity['data'] = np.array([uvel_mps] * naz * nele,
-                                        dtype='float32')
-
-    instrument_parameters = {'prt_mode': prt_mode, 'prt': prt,
-                             'unambiguous_range': unambiguous_range,
-                             'nyquist_velocity': nyquist_velocity}
